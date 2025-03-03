@@ -1,11 +1,9 @@
 package webserver;
 
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -17,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import db.DataBase;
 import model.User;
 import util.HttpRequestUtils;
+import util.MyRequestUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -32,7 +31,7 @@ public class RequestHandler extends Thread {
                 connection.getPort());
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
-            String path = extractResource(in);
+            String path = MyRequestUtils.extractResource(in);
 
             String contentType = "html";
             if (path.endsWith(".css")) {
@@ -70,48 +69,7 @@ public class RequestHandler extends Thread {
         DataBase.addUser(user);
     }
 
-    String extractMethod(InputStream in) {
-        return parseRequest(in, ParseResource.METHOD);
-    }
-
-    String extractResource(InputStream in) {
-        return parseRequest(in, ParseResource.PATH);
-    }
-
-    enum ParseResource {
-        METHOD(0), PATH(1);
-
-        private final int position;
-
-        ParseResource(int position) {
-            this.position = position;
-        }
-
-        public int getPosition() {
-            return position;
-        }
-    }
-    
-    private String parseRequest(InputStream in, ParseResource resource) {
-        InputStreamReader isr = new InputStreamReader(in);
-        BufferedReader br = new BufferedReader(isr);
-
-        String line = null;
-        try {
-            line = br.readLine();
-            String[] splited = line.split(" ");
-            while (!"".equals(line)) {
-                log.info("header : {}", line);
-                line = br.readLine();
-            }
-            return splited[resource.getPosition()];
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-        return "";
-    }
-
-    private byte[] readFile(String fileName) {
+    private byte[] readFile(String fileName) throws IOException {
         byte[] body = null;
         try {
             body = Files.readAllBytes(new File("./webapp" + fileName).toPath());

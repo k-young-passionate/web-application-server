@@ -20,30 +20,6 @@ public class RequestHandlerTest {
 	}
 
 	@Test
-	public void testExtractMethod() {
-		// Given
-		RequestHandler requestHandler = new RequestHandler(null);
-
-		// When
-		String method = requestHandler.extractMethod(in);
-
-		// Then
-		Assert.assertEquals("GET", method);
-	}
-
-	@Test
-	public void testExtractResource() {
-		// Given
-		RequestHandler requestHandler = new RequestHandler(null);
-
-		// When
-		String path = requestHandler.extractResource(in);
-
-		// Then
-		Assert.assertEquals("/index.html", path);
-	}
-
-	@Test
 	public void testGetUserCreateHandler() {
 		// Given
 		RequestHandler requestHandler = new RequestHandler(null);
