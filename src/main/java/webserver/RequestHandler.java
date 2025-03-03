@@ -9,9 +9,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import db.DataBase;
+import model.User;
+import util.HttpRequestUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -27,7 +32,7 @@ public class RequestHandler extends Thread {
                 connection.getPort());
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
-            String path = extractPath(in);
+            String path = extractResource(in);
 
             String contentType = "html";
             if (path.endsWith(".css")) {
@@ -36,7 +41,13 @@ public class RequestHandler extends Thread {
                 contentType = "js";
             }
 
-            byte[] body = readFile(path);
+            byte[] body = null;
+
+            if (path.startsWith("/user/create")) {
+                getUserCreateHandler(path);
+            } else {
+                body = readFile(path);
+            }
 
             if (body == null) {
                 body = "Hello World".getBytes();
@@ -51,11 +62,19 @@ public class RequestHandler extends Thread {
         }
     }
 
+    void getUserCreateHandler(String path) {
+        String args = path.split("\\?")[1];
+        Map<String, String> params = HttpRequestUtils.parseQueryString(args);
+
+        User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
+        DataBase.addUser(user);
+    }
+
     String extractMethod(InputStream in) {
         return parseRequest(in, ParseResource.METHOD);
     }
 
-    String extractPath(InputStream in) {
+    String extractResource(InputStream in) {
         return parseRequest(in, ParseResource.PATH);
     }
 
@@ -81,6 +100,10 @@ public class RequestHandler extends Thread {
         try {
             line = br.readLine();
             String[] splited = line.split(" ");
+            while (!"".equals(line)) {
+                log.info("header : {}", line);
+                line = br.readLine();
+            }
             return splited[resource.getPosition()];
         } catch (IOException e) {
             log.error(e.getMessage());

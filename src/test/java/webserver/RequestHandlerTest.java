@@ -7,6 +7,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import db.DataBase;
+import model.User;
 
 public class RequestHandlerTest {
 	InputStream in;
@@ -30,15 +32,33 @@ public class RequestHandlerTest {
 	}
 
 	@Test
-	public void testExtractPath() {
+	public void testExtractResource() {
 		// Given
 		RequestHandler requestHandler = new RequestHandler(null);
 
 		// When
-		String path = requestHandler.extractPath(in);
+		String path = requestHandler.extractResource(in);
 
 		// Then
 		Assert.assertEquals("/index.html", path);
 	}
 
+	@Test
+	public void testGetUserCreateHandler() {
+		// Given
+		RequestHandler requestHandler = new RequestHandler(null);
+		String path = "/user/create?userId=abc&password=def&name=ghi&email=jkl";
+
+		// When
+		requestHandler.getUserCreateHandler(path);
+
+		User user = DataBase.findUserById("abc");
+		User expected = new User("abc", "def", "ghi", "jkl");
+
+		// Then
+		Assert.assertEquals(expected.getUserId(), user.getUserId());
+		Assert.assertEquals(expected.getPassword(), user.getPassword());
+		Assert.assertEquals(expected.getName(), user.getName());
+		Assert.assertEquals(expected.getEmail(), user.getEmail());
+	}
 }
