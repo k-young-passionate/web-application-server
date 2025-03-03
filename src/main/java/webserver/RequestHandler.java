@@ -40,22 +40,22 @@ public class RequestHandler extends Thread {
                 contentType = "js";
             }
 
-            byte[] body = null;
+            DataOutputStream dos = new DataOutputStream(out);
 
             if (path.startsWith("/user/create")) {
                 getUserCreateHandler(path);
+
+                response302Header(dos);
             } else {
-                body = readFile(path);
+                byte[] body = readFile(path);
+
+                if (body == null) {
+                    body = "Hello World".getBytes();
+                }
+
+                response200Header(dos, body.length, contentType);
+                responseBody(dos, body);
             }
-
-            if (body == null) {
-                body = "Hello World".getBytes();
-            }
-
-            DataOutputStream dos = new DataOutputStream(out);
-
-            response200Header(dos, body.length, contentType);
-            responseBody(dos, body);
         } catch (IOException e) {
             log.error(e.getMessage());
         }
@@ -89,6 +89,15 @@ public class RequestHandler extends Thread {
             dos.writeBytes("Content-Type: text/" + contentType + ";charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void response302Header(DataOutputStream dos) {
+        try {
+            dos.writeBytes("Http/1.1 302 Found \r\n");
+            dos.writeBytes("Location: /index.html \r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
         }
