@@ -51,11 +51,11 @@ public class RequestHandler extends Thread {
         }
     }
 
-    private String extractMethod(InputStream in) {
+    String extractMethod(InputStream in) {
         return parseRequest(in, ParseResource.METHOD);
     }
 
-    private String extractPath(InputStream in) {
+    String extractPath(InputStream in) {
         return parseRequest(in, ParseResource.PATH);
     }
 
