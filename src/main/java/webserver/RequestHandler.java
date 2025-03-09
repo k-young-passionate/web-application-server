@@ -1,5 +1,7 @@
 package webserver;
 
+import static util.HttpRequestUtils.*;
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -13,9 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import db.DataBase;
+import model.Request;
 import model.User;
-import util.HttpRequestUtils;
-import util.MyRequestUtils;
+import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -31,7 +33,10 @@ public class RequestHandler extends Thread {
                 connection.getPort());
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
-            String path = MyRequestUtils.extractResource(in);
+            Request request = new Request(in);
+
+            String path = request.getPath();
+            String method = request.getMethod();
 
             String contentType = "html";
             if (path.endsWith(".css")) {
@@ -43,7 +48,7 @@ public class RequestHandler extends Thread {
             DataOutputStream dos = new DataOutputStream(out);
 
             if (path.startsWith("/user/create")) {
-                getUserCreateHandler(path);
+                postUserCreateHandler(request);
 
                 response302Header(dos);
             } else {
@@ -61,9 +66,9 @@ public class RequestHandler extends Thread {
         }
     }
 
-    void getUserCreateHandler(String path) {
-        String args = path.split("\\?")[1];
-        Map<String, String> params = HttpRequestUtils.parseQueryString(args);
+    void postUserCreateHandler(Request request) throws IOException {
+        String body = IOUtils.readData(request.getBr(), Integer.parseInt(request.getHeaders().get("Content-Length")));
+        Map<String, String> params = parseQueryString(body);
 
         User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
         DataBase.addUser(user);
