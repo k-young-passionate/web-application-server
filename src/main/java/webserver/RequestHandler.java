@@ -47,31 +47,54 @@ public class RequestHandler extends Thread {
 
             DataOutputStream dos = new DataOutputStream(out);
 
-            if (path.startsWith("/user/create")) {
-                postUserCreateHandler(request);
-
-                response302Header(dos);
+            if (path.equals("/user/create")) {
+                postUserCreateHandler(dos, request);
+            } else if (path.equals("/user/login")) {
+                postUserLoginHandler(dos, request);
             } else {
-                byte[] body = readFile(path);
-
-                if (body == null) {
-                    body = "Hello World".getBytes();
-                }
-
-                response200Header(dos, body.length, contentType);
-                responseBody(dos, body);
+                responseResource(dos, path, contentType);
             }
         } catch (IOException e) {
             log.error(e.getMessage());
         }
     }
 
-    void postUserCreateHandler(Request request) throws IOException {
+    void responseResource(DataOutputStream dos, String path, String contentType) throws IOException {
+        byte[] body = readFile(path);
+        response200Header(dos, body.length, contentType);
+        responseBody(dos, body);
+    }
+
+    void responseResource(DataOutputStream dos, String path, String contentType, String cookie) throws IOException {
+        byte[] body = readFile(path);
+        response200Header(dos, body.length, contentType, cookie);
+        responseBody(dos, body);
+    }
+
+    void postUserCreateHandler(DataOutputStream dos, Request request) throws IOException {
         String body = IOUtils.readData(request.getBr(), Integer.parseInt(request.getHeaders().get("Content-Length")));
         Map<String, String> params = parseQueryString(body);
 
         User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
         DataBase.addUser(user);
+
+        response302Header(dos);
+    }
+
+    void postUserLoginHandler(DataOutputStream dos, Request request) throws IOException {
+        String body = IOUtils.readData(request.getBr(), Integer.parseInt(request.getHeaders().get("Content-Length")));
+        Map<String, String> params = parseQueryString(body);
+
+        User user = DataBase.findUserById(params.get("userId"));
+
+        boolean isLogin = user != null && user.getPassword().equals(params.get("password"));
+
+        if (isLogin) {
+            response200Header(dos, 0, "html", "logined=true");
+        } else {
+            responseResource(dos, "/user/login_failed.html", "html", "logined=false");
+
+        }
     }
 
     private byte[] readFile(String fileName) throws IOException {
@@ -92,6 +115,22 @@ public class RequestHandler extends Thread {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: text/" + contentType + ";charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String contentType, String cookie) {
+        if (contentType == null) {
+            contentType = "html";
+        }
+
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/" + contentType + ";charset=utf-8\r\n");
+            dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {

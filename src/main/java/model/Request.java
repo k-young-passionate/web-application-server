@@ -36,6 +36,7 @@ public class Request {
 		this.path = splited[1];
 
 		headers = new HashMap<>();
+		cookies = new HashMap<>();
 
 		while ((line = br.readLine()) != null) {
 			if (line.isEmpty()) {
@@ -43,9 +44,21 @@ public class Request {
 			}
 
 			String[] header = line.split(": ");
+			if (header[0].equals("Cookie")) {
+				putCookies(header[1]);
+			}
 			headers.put(header[0], header[1]);
 		}
 
+	}
+
+	private void putCookies(String cookie) {
+		String[] cookieSplit = cookie.split(";");
+		for (String c : cookieSplit) {
+			String[] cSplit = c.split("=");
+			cookies.put(cSplit[0], cSplit[1]);
+			log.error("cookie : {}", cSplit[0]);
+		}
 	}
 
 	private enum ParseResource {
