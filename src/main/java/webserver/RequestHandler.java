@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
 
@@ -36,7 +37,6 @@ public class RequestHandler extends Thread {
             Request request = new Request(in);
 
             String path = request.getPath();
-            String method = request.getMethod();
 
             String contentType = "html";
             if (path.endsWith(".css")) {
@@ -47,13 +47,20 @@ public class RequestHandler extends Thread {
 
             DataOutputStream dos = new DataOutputStream(out);
 
-            if (path.equals("/user/create")) {
-                postUserCreateHandler(dos, request);
-            } else if (path.equals("/user/login")) {
-                postUserLoginHandler(dos, request);
-            } else {
-                responseResource(dos, path, contentType);
-            }
+			switch (path) {
+				case "/user/create":
+					postUserCreateHandler(dos, request);
+					break;
+				case "/user/login":
+					postUserLoginHandler(dos, request);
+					break;
+				case "/user/list":
+					getUserListHandler(dos, request);
+					break;
+				default:
+					responseResource(dos, path, contentType);
+					break;
+			}
         } catch (IOException e) {
             log.error(e.getMessage());
         }
@@ -71,6 +78,39 @@ public class RequestHandler extends Thread {
         responseBody(dos, body);
     }
 
+    void getUserListHandler(DataOutputStream dos, Request request) throws IOException {
+        boolean isLogin = Boolean.parseBoolean(request.getCookies().get("logined"));
+
+        if (isLogin) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("<html>");
+            sb.append("<body>");
+            sb.append("<table border='1'>");
+            sb.append("<tr>");
+            sb.append("<th>userId</th>").append("<th>name</th>").append("<th>email</th>");
+            sb.append("</tr>");
+
+            for (User user : DataBase.findAll()) {
+                sb.append("<tr>");
+                sb.append("<td>").append(user.getUserId()).append("</td>");
+                sb.append("<td>").append(user.getName()).append("</td>");
+                sb.append("<td>").append(user.getEmail()).append("</td>");
+                sb.append("</tr>");
+            }
+
+            sb.append("</table>");
+            sb.append("</body>");
+            sb.append("</html>");
+
+            byte[] userList = sb.toString().getBytes(StandardCharsets.UTF_8);
+
+            response200Header(dos, userList.length, "html");
+            responseBody(dos, userList);
+        } else {
+            response302Header(dos, "/user/login.html");
+        }
+    }
+
     void postUserCreateHandler(DataOutputStream dos, Request request) throws IOException {
         String body = IOUtils.readData(request.getBr(), Integer.parseInt(request.getHeaders().get("Content-Length")));
         Map<String, String> params = parseQueryString(body);
@@ -78,7 +118,7 @@ public class RequestHandler extends Thread {
         User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
         DataBase.addUser(user);
 
-        response302Header(dos);
+        response302Header(dos, "/index.html");
     }
 
     void postUserLoginHandler(DataOutputStream dos, Request request) throws IOException {
@@ -138,10 +178,10 @@ public class RequestHandler extends Thread {
         }
     }
 
-    private void response302Header(DataOutputStream dos) {
+    private void response302Header(DataOutputStream dos, String path) {
         try {
             dos.writeBytes("Http/1.1 302 Found \r\n");
-            dos.writeBytes("Location: /index.html \r\n");
+            dos.writeBytes("Location: " + path + " \r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
         }
